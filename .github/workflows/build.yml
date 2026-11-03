@@ -4,6 +4,9 @@ on:
   push:
   workflow_dispatch:
 
+permissions:
+  contents: write
+
 jobs:
   build:
     runs-on: ubuntu-latest
@@ -31,8 +34,22 @@ jobs:
           chmod +x gradlew
           ./gradlew assembleRelease --stacktrace
       - name: APK umbenennen
-        run: cp app/build/outputs/apk/release/app-release.apk TG-Automation.apk
+        run: cp app/build/outputs/apk/release/app-release.apk TG-Automation-1.0.${{ github.run_number }}.apk
       - uses: actions/upload-artifact@v4
         with:
           name: TG-Automation-APK
-          path: TG-Automation.apk
+          path: TG-Automation-*.apk
+      - name: Als Release veröffentlichen
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: v1.0.${{ github.run_number }}
+          name: TG Automation 1.0.${{ github.run_number }}
+          target_commitish: ${{ github.sha }}
+          make_latest: true
+          files: TG-Automation-*.apk
+          body: |
+            **Installieren:** `TG-Automation-1.0.${{ github.run_number }}.apk` unten bei *Assets* aufs Handy laden und öffnen.
+
+            Branch: `${{ github.ref_name }}` · Commit: ${{ github.sha }}
+
+            Änderung: ${{ github.event.head_commit.message }}

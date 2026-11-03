@@ -13,8 +13,10 @@ android {
         applicationId = "com.tg.automation"
         minSdk = 26
         targetSdk = 35
-        versionCode = 1
-        versionName = "1.0.0"
+        // In GitHub Actions zählt die Build-Nummer hoch, damit jedes Release ein Update ist.
+        val buildNumber = System.getenv("GITHUB_RUN_NUMBER")?.toIntOrNull() ?: 1
+        versionCode = buildNumber
+        versionName = "1.0.$buildNumber"
     }
 
     // Eigener Schlüssel optional über Umgebungsvariablen (z. B. GitHub-Secrets),

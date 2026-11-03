@@ -23,8 +23,8 @@ Extras: Vorlagen zum Schnellstart, Homescreen-Verknüpfungen für Makros, Schnel
 
 ## Installieren
 
-1. GitHub → **Actions** → letzter Lauf von „APK bauen“ → unten bei *Artifacts* `TG-Automation-APK` herunterladen.
-2. ZIP entpacken, `TG-Automation.apk` auf dem Handy öffnen, Installation aus unbekannten Quellen erlauben.
+1. Auf GitHub rechts bei **Releases** das neueste Release öffnen (jeder Build wird automatisch veröffentlicht).
+2. Die `.apk` unter *Assets* auf dem Handy herunterladen und öffnen, Installation aus unbekannten Quellen erlauben.
 3. In der App unter **Einrichtung** nur die Berechtigungen erlauben, die deine Makros brauchen.
 
 > Android 13+: Sind Bedienungshilfe oder Benachrichtigungszugriff ausgegraut:
