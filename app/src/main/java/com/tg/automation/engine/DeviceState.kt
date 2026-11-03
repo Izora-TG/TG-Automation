@@ -1,5 +1,6 @@
 package com.tg.automation.engine
 
+import android.app.NotificationManager
 import android.content.Context
 import android.media.AudioDeviceInfo
 import android.media.AudioManager
@@ -8,6 +9,7 @@ import android.net.NetworkCapabilities
 import android.os.BatteryManager
 import android.os.Build
 import android.os.PowerManager
+import android.provider.Settings
 
 /** Liest den aktuellen Gerätezustand – ohne Dauerabfrage, nur bei Bedarf. */
 object DeviceState {
@@ -40,6 +42,16 @@ object DeviceState {
         ctx.getSystemService(AudioManager::class.java)
             .getDevices(AudioManager.GET_DEVICES_OUTPUTS)
             .any { isHeadphone(it) }
+
+    fun isDndOn(ctx: Context): Boolean =
+        ctx.getSystemService(NotificationManager::class.java).currentInterruptionFilter.let {
+            it != NotificationManager.INTERRUPTION_FILTER_ALL && it != NotificationManager.INTERRUPTION_FILTER_UNKNOWN
+        }
+
+    fun isPowerSave(ctx: Context): Boolean = ctx.getSystemService(PowerManager::class.java).isPowerSaveMode
+
+    fun isAirplane(ctx: Context): Boolean =
+        Settings.Global.getInt(ctx.contentResolver, Settings.Global.AIRPLANE_MODE_ON, 0) == 1
 
     fun ringerMode(ctx: Context): String = when (ctx.getSystemService(AudioManager::class.java).ringerMode) {
         AudioManager.RINGER_MODE_SILENT -> "silent"

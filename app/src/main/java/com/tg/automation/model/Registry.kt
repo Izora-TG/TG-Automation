@@ -5,6 +5,19 @@ import androidx.compose.material.icons.automirrored.filled.Message
 import androidx.compose.material.icons.automirrored.filled.OpenInNew
 import androidx.compose.material.icons.automirrored.filled.VolumeUp
 import androidx.compose.material.icons.filled.AccessTime
+import androidx.compose.material.icons.filled.AccountTree
+import androidx.compose.material.icons.filled.Alarm
+import androidx.compose.material.icons.filled.BatterySaver
+import androidx.compose.material.icons.filled.Casino
+import androidx.compose.material.icons.filled.ClearAll
+import androidx.compose.material.icons.filled.DataObject
+import androidx.compose.material.icons.filled.EditNote
+import androidx.compose.material.icons.filled.FlipToBack
+import androidx.compose.material.icons.filled.MusicNote
+import androidx.compose.material.icons.filled.Sensors
+import androidx.compose.material.icons.filled.SignalCellularAlt
+import androidx.compose.material.icons.filled.Swipe
+import androidx.compose.material.icons.filled.UnfoldMore
 import androidx.compose.material.icons.filled.AirplanemodeActive
 import androidx.compose.material.icons.filled.Apps
 import androidx.compose.material.icons.filled.BatteryAlert
@@ -42,6 +55,7 @@ import androidx.compose.material.icons.filled.Vibration
 import androidx.compose.material.icons.filled.Wifi
 import androidx.compose.ui.graphics.vector.ImageVector
 import com.tg.automation.App
+import com.tg.automation.data.MacroRepository
 import com.tg.automation.engine.Apps
 
 /** Beschreibt ein einstellbares Feld eines Bausteins. */
@@ -86,6 +100,8 @@ sealed class Param(val key: String, val label: String, val default: String) {
 
     class App(key: String = "app", label: String = "App", val optional: Boolean = false) :
         Param(key, label, "")
+
+    class MacroRef(key: String = "macro", label: String = "Makro") : Param(key, label, "")
 }
 
 class ComponentDef(
@@ -485,10 +501,179 @@ object Registry {
             summary = { "„${it.p("text")}“ kopieren" },
         ),
         ComponentDef(
-            "wait", Kind.ACTION, "Sonstiges", "Warten",
+            "wait", Kind.ACTION, "Logik", "Warten",
             "Wartet, bevor die nächste Aktion ausgeführt wird", Icons.Default.HourglassEmpty,
             params = listOf(Param.Number("seconds", "Sekunden", 5, 1, 3600, "s")),
             summary = { "${it.p("seconds")} Sekunden warten" },
+        ),
+
+        // ───────────── WEITERE AUSLÖSER ─────────────
+        ComponentDef(
+            "shake", Kind.TRIGGER, "Gerät", "Schütteln",
+            "Handy schütteln (nur bei eingeschaltetem Bildschirm – spart Akku)", Icons.Default.Sensors,
+            params = listOf(Param.Choice("sensitivity", "Empfindlichkeit", listOf("low" to "Kräftig", "medium" to "Normal", "high" to "Leicht"), default = "medium")),
+            needsService = true,
+            summary = { "Schütteln (${Registry.def("shake")!!.choiceLabel(it, "sensitivity")})" },
+        ),
+        ComponentDef(
+            "face_down", Kind.TRIGGER, "Gerät", "Umdrehen",
+            "Handy mit dem Display nach unten hinlegen oder wieder umdrehen", Icons.Default.FlipToBack,
+            params = listOf(Param.Choice("state", "Wenn", listOf("down" to "Display nach unten", "up" to "Wieder nach oben"))),
+            needsService = true,
+            summary = { Registry.def("face_down")!!.choiceLabel(it, "state") },
+        ),
+        ComponentDef(
+            "ringer_changed", Kind.TRIGGER, "Gerät", "Klingelmodus geändert",
+            "Wenn zu Klingeln, Vibration oder Lautlos gewechselt wird", Icons.Default.RingVolume,
+            params = listOf(
+                Param.Choice("mode", "Neuer Modus", listOf("any" to "Egal", "normal" to "Klingeln", "vibrate" to "Vibration", "silent" to "Lautlos")),
+            ),
+            needsService = true,
+            summary = { "Klingelmodus → ${Registry.def("ringer_changed")!!.choiceLabel(it, "mode")}" },
+        ),
+        ComponentDef(
+            "dnd_changed", Kind.TRIGGER, "Gerät", "Nicht stören geändert",
+            "„Nicht stören“ wurde ein- oder ausgeschaltet", Icons.Default.DoNotDisturbOn,
+            params = listOf(Param.Choice("state", "Nicht stören", onOff)),
+            needsService = true,
+            summary = { "Nicht stören ${if (it.p("state") == "on") "an" else "aus"}" },
+        ),
+        ComponentDef(
+            "power_save", Kind.TRIGGER, "Gerät", "Energiesparmodus",
+            "Energiesparmodus ein- oder ausgeschaltet", Icons.Default.BatterySaver,
+            params = listOf(Param.Choice("state", "Energiesparmodus", onOff)),
+            needsService = true,
+            summary = { "Energiesparen ${if (it.p("state") == "on") "an" else "aus"}" },
+        ),
+        ComponentDef(
+            "mobile_data", Kind.TRIGGER, "Verbindungen", "Mobile Daten",
+            "Mobilfunk-Internet verbunden oder getrennt", Icons.Default.SignalCellularAlt,
+            params = listOf(Param.Choice("state", "Status", connected)),
+            needsService = true,
+            summary = { "Mobile Daten ${if (it.p("state") == "connected") "verbunden" else "getrennt"}" },
+        ),
+
+        // ───────────── WEITERE BEDINGUNGEN ─────────────
+        ComponentDef(
+            "chance", Kind.CONSTRAINT, "Logik", "Zufall",
+            "„Ja“ mit einer bestimmten Wahrscheinlichkeit", Icons.Default.Casino,
+            params = listOf(Param.Slider("percent", "Wahrscheinlichkeit für Ja", 50, 1, 99, "%")),
+            summary = { "${it.p("percent")} % Ja" },
+        ),
+        ComponentDef(
+            "var_compare", Kind.CONSTRAINT, "Logik", "Variable prüfen",
+            "Vergleicht eine gespeicherte Variable mit einem Wert", Icons.Default.DataObject,
+            params = listOf(
+                Param.Text("name", "Variable", "zaehler", hint = "z. B. zaehler"),
+                Param.Choice("op", "Vergleich", listOf("eq" to "=", "ne" to "≠", "gt" to ">", "lt" to "<", "contains" to "enthält")),
+                Param.Text("value", "Wert", "0"),
+            ),
+            summary = { "${it.p("name")} ${Registry.def("var_compare")!!.choiceLabel(it, "op")} ${it.p("value")}" },
+        ),
+        ComponentDef(
+            "current_app", Kind.CONSTRAINT, "Apps", "App im Vordergrund",
+            "Nur wenn gerade eine bestimmte App offen ist", Icons.Default.Apps,
+            params = listOf(Param.App()),
+            requirements = { setOf(Requirement.ACCESSIBILITY) },
+            summary = { "${appName(it.p("app"))} ist offen" },
+        ),
+        ComponentDef(
+            "dnd_active", Kind.CONSTRAINT, "Gerät", "Nicht stören aktiv",
+            "Prüft, ob „Nicht stören“ an ist", Icons.Default.DoNotDisturbOn,
+            params = listOf(Param.Choice("state", "Nicht stören an", yesNo)),
+            summary = { if (it.p("state") == "yes") "Nicht stören an" else "Nicht stören aus" },
+        ),
+        ComponentDef(
+            "power_save_active", Kind.CONSTRAINT, "Gerät", "Energiesparmodus aktiv",
+            "Prüft, ob der Energiesparmodus an ist", Icons.Default.BatterySaver,
+            params = listOf(Param.Choice("state", "Energiesparen an", yesNo)),
+            summary = { if (it.p("state") == "yes") "Energiesparen an" else "Energiesparen aus" },
+        ),
+        ComponentDef(
+            "airplane_active", Kind.CONSTRAINT, "Verbindungen", "Flugmodus aktiv",
+            "Prüft, ob der Flugmodus an ist", Icons.Default.AirplanemodeActive,
+            params = listOf(Param.Choice("state", "Flugmodus an", yesNo)),
+            summary = { if (it.p("state") == "yes") "Flugmodus an" else "Flugmodus aus" },
+        ),
+
+        // ───────────── WEITERE AKTIONEN ─────────────
+        ComponentDef(
+            "tap", Kind.ACTION, "Steuerung", "Auf Bildschirm tippen",
+            "Tippt an eine Stelle (in % der Bildschirmbreite/-höhe)", Icons.Default.TouchApp,
+            params = listOf(
+                Param.Slider("x", "Waagerecht", 50, 0, 100, "%"),
+                Param.Slider("y", "Senkrecht", 50, 0, 100, "%"),
+                Param.Choice("press", "Art", listOf("short" to "Kurz", "long" to "Lang")),
+            ),
+            requirements = { setOf(Requirement.ACCESSIBILITY) },
+            summary = { "${if (it.p("press") == "long") "Lang tippen" else "Tippen"} bei ${it.p("x")} % / ${it.p("y")} %" },
+        ),
+        ComponentDef(
+            "swipe", Kind.ACTION, "Steuerung", "Wischen",
+            "Wischt über den Bildschirm, z. B. zum Scrollen", Icons.Default.Swipe,
+            params = listOf(
+                Param.Choice("dir", "Richtung", listOf("up" to "Nach oben", "down" to "Nach unten", "left" to "Nach links", "right" to "Nach rechts")),
+            ),
+            requirements = { setOf(Requirement.ACCESSIBILITY) },
+            summary = { Registry.def("swipe")!!.choiceLabel(it, "dir") + " wischen" },
+        ),
+        ComponentDef(
+            "volume_step", Kind.ACTION, "Benachrichtigung & Ton", "Lauter / Leiser",
+            "Lautstärke eine Stufe ändern oder stummschalten", Icons.Default.UnfoldMore,
+            params = listOf(
+                Param.Choice("stream", "Lautstärke für", listOf("media" to "Medien", "ring" to "Klingelton", "alarm" to "Wecker")),
+                Param.Choice("dir", "Richtung", listOf("up" to "Lauter", "down" to "Leiser", "mute" to "Stumm", "unmute" to "Ton an")),
+            ),
+            summary = { "${Registry.def("volume_step")!!.choiceLabel(it, "stream")}: ${Registry.def("volume_step")!!.choiceLabel(it, "dir")}" },
+        ),
+        ComponentDef(
+            "play_sound", Kind.ACTION, "Benachrichtigung & Ton", "Ton abspielen",
+            "Spielt den Benachrichtigungs-, Klingel- oder Weckton", Icons.Default.MusicNote,
+            params = listOf(Param.Choice("sound", "Ton", listOf("notification" to "Benachrichtigung", "ringtone" to "Klingelton", "alarm" to "Wecker"))),
+            summary = { Registry.def("play_sound")!!.choiceLabel(it, "sound") },
+        ),
+        ComponentDef(
+            "clear_notifications", Kind.ACTION, "Benachrichtigung & Ton", "Benachrichtigungen löschen",
+            "Entfernt alle wegwischbaren Benachrichtigungen", Icons.Default.ClearAll,
+            requirements = { setOf(Requirement.NOTIFICATION_LISTENER) },
+            summary = { "Alle löschen" },
+        ),
+        ComponentDef(
+            "set_alarm", Kind.ACTION, "Apps & Web", "Wecker stellen",
+            "Stellt einen Wecker in der Uhr-App", Icons.Default.Alarm,
+            params = listOf(Param.Time("time", "Uhrzeit", "07:00"), Param.Text("label", "Bezeichnung", "TG Automation")),
+            requirements = { setOf(Requirement.ACCESSIBILITY) },
+            summary = { "Wecker ${it.p("time")} Uhr" },
+        ),
+        ComponentDef(
+            "set_var", Kind.ACTION, "Logik", "Variable setzen",
+            "Speichert einen Wert dauerhaft – nutzbar als {name} in Texten", Icons.Default.DataObject,
+            params = listOf(
+                Param.Text("name", "Variable", "zaehler", hint = "z. B. zaehler"),
+                Param.Choice("op", "Aktion", listOf("set" to "Setzen", "add" to "Plus", "sub" to "Minus", "append" to "Anhängen")),
+                Param.Text("value", "Wert", "1"),
+            ),
+            summary = {
+                val v = it.p("value")
+                when (it.p("op")) {
+                    "add" -> "${it.p("name")} + $v"
+                    "sub" -> "${it.p("name")} − $v"
+                    "append" -> "${it.p("name")} += „$v“"
+                    else -> "${it.p("name")} = $v"
+                }
+            },
+        ),
+        ComponentDef(
+            "run_macro", Kind.ACTION, "Logik", "Makro ausführen",
+            "Startet ein anderes Makro", Icons.Default.AccountTree,
+            params = listOf(Param.MacroRef()),
+            summary = { MacroRepository.get(it.p("macro"))?.name?.let { n -> "„$n“ starten" } ?: "Kein Makro gewählt" },
+        ),
+        ComponentDef(
+            "log", Kind.ACTION, "Logik", "Ins Protokoll schreiben",
+            "Schreibt einen Text ins Protokoll – praktisch zum Testen", Icons.Default.EditNote,
+            params = listOf(Param.Text("text", "Text", "Akku: {battery} %")),
+            summary = { "„${it.p("text")}“" },
         ),
     )
 
@@ -501,4 +686,4 @@ object Registry {
 
 /** Platzhalter, die in Texten benutzt werden können. */
 const val VARIABLE_HINT =
-    "Platzhalter: {battery} Akku · {time} Uhrzeit · {date} Datum · {app_name} App · {title} / {text} Benachrichtigung · {ssid} WLAN · {device} Gerät · {http_response} Antwort"
+    "Platzhalter: {battery} Akku · {var} eigene Variable · {time} Uhrzeit · {date} Datum · {app_name} App · {title} / {text} Benachrichtigung · {ssid} WLAN · {device} Gerät · {http_response} Antwort"

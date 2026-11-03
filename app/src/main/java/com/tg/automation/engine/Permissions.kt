@@ -100,8 +100,8 @@ object Permissions {
     /** Welche Berechtigungen die aktiven Makros brauchen. */
     fun usedBy(macros: List<Macro>): Set<Requirement> =
         macros.filter { it.enabled }
-            .flatMap { it.all }
-            .flatMap { c -> Registry.def(c.type)?.requirements?.invoke(c).orEmpty() }
+            .flatMap { it.nodes }
+            .flatMap { n -> Registry.def(n.type)?.requirements?.invoke(n.component).orEmpty() }
             .toSet()
 
     fun missingFor(ctx: Context, macros: List<Macro>): List<Requirement> =

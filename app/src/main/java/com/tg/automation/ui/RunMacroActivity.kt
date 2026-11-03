@@ -14,7 +14,7 @@ class RunMacroActivity : Activity() {
         if (macro == null) {
             Toast.makeText(this, "Makro nicht gefunden", Toast.LENGTH_SHORT).show()
         } else {
-            Engine.runMacro(macro, emptyMap(), checkConstraints = false, source = "Verknüpfung")
+            Engine.runManually(macro, "Verknüpfung")
             Toast.makeText(this, "▶ ${macro.name}", Toast.LENGTH_SHORT).show()
         }
         finish()

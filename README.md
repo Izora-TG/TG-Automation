@@ -3,13 +3,28 @@
 Eine einfache, akkuschonende Automations-App für Android 8 – 16 (z. B. Nothing Phone, Pixel, Samsung).
 Kein Google-Play-Dienst nötig.
 
-Ein **Makro** besteht aus:
+## Board-Editor
 
-| Wenn … (Auslöser) | Nur wenn … (Bedingungen, optional) | Dann … (Aktionen) |
+Makros werden aus **Blöcken** auf einem Board gebaut und mit Linien verbunden:
+
+- **Auslöser** (blau/Hauptfarbe) starten den Ablauf.
+- **Bedingungen** haben zwei Ausgänge: **Ja** (grün) und **Nein** (rot) – so entstehen Verzweigungen.
+- **Aktionen** werden ausgeführt und geben dann an den nächsten Block weiter.
+
+Bedienung: Block antippen → Werkzeugleiste (bearbeiten, duplizieren, Verbindungen lösen, löschen).
+Mit „+ Block anhängen“ wird ein neuer Block direkt unter dem ausgewählten angehängt und verbunden.
+Vom ● unter einem Block auf einen anderen ziehen verbindet sie; ins Leere ziehen hängt einen neuen Block an.
+Mit zwei Fingern zoomen und verschieben, „Anordnen“ räumt das Board automatisch auf.
+
+## Blöcke (62)
+
+| Auslöser (20) | Bedingungen (14) | Aktionen (28) |
 |---|---|---|
-| Uhrzeit, Intervall, Akkustand, Ladegerät, Bildschirm an/aus/entsperrt, Kopfhörer, Bluetooth-Gerät, WLAN (optional bestimmtes Netz), Flugmodus, Anruf, Benachrichtigung erhalten, App geöffnet, Handy gestartet, Manuell/Homescreen-Verknüpfung | Zeitraum, Wochentage, Akkubereich, Lädt, Bildschirm an/aus, WLAN verbunden, Kopfhörer verbunden, Klingelmodus | Benachrichtigung, Einblendung, Vorlesen, Vibrieren, Lautstärke, Klingelmodus, Nicht stören, Taschenlampe, Helligkeit, Bildschirm-Timeout, Auto-Drehen, Medien steuern, Handy bedienen (Home, Zurück, Sperren, Screenshot …), App öffnen, Webseite öffnen, Webhook/HTTP, Einstellung öffnen, Zwischenablage, Warten |
+| Uhrzeit, Intervall, Akkustand, Ladegerät, Bildschirm an/aus/entsperrt, Schütteln, Umdrehen, Kopfhörer, Bluetooth-Gerät, WLAN, Mobile Daten, Flugmodus, Anruf, Klingelmodus geändert, Nicht stören geändert, Energiesparmodus, Benachrichtigung erhalten, App geöffnet, Handy gestartet, Manuell/Verknüpfung | Zeitraum, Wochentage, Akkubereich, Lädt, Bildschirm, WLAN verbunden, Kopfhörer, Klingelmodus, Nicht stören aktiv, Energiesparmodus aktiv, Flugmodus aktiv, App im Vordergrund, Zufall, Variable prüfen | Benachrichtigung, Einblendung, Vorlesen, Vibrieren, Ton abspielen, Lautstärke, Lauter/Leiser, Klingelmodus, Nicht stören, Benachrichtigungen löschen, Taschenlampe, Helligkeit, Bildschirm-Timeout, Auto-Drehen, Medien steuern, Handy bedienen (Home, Zurück, Sperren, Screenshot …), Tippen, Wischen, App öffnen, Webseite öffnen, Webhook/HTTP, Einstellung öffnen, Wecker stellen, Zwischenablage, Variable setzen, Makro ausführen, Ins Protokoll schreiben, Warten |
 
-Texte können Platzhalter enthalten: `{battery}`, `{time}`, `{date}`, `{app_name}`, `{title}`, `{text}`, `{ssid}`, `{device}`, `{http_response}`.
+Variablen (z. B. Zähler) bleiben gespeichert und können in Texten als `{name}` benutzt werden.
+
+Texte können Platzhalter enthalten: `{eigene_variable}`, `{battery}`, `{time}`, `{date}`, `{app_name}`, `{title}`, `{text}`, `{ssid}`, `{device}`, `{http_response}`.
 
 Extras: Vorlagen zum Schnellstart, Homescreen-Verknüpfungen für Makros, Schnelleinstellungs-Kachel
 „Automationen“ zum Pausieren, Protokoll mit Fehlermeldungen.
@@ -19,7 +34,8 @@ Extras: Vorlagen zum Schnellstart, Homescreen-Verknüpfungen für Makros, Schnel
 - Keine Dauerabfragen – alles reagiert auf Signale von Android.
 - Uhrzeit/Intervall laufen über den System-Wecker (`AlarmManager`).
 - Der Hintergrund-Dienst startet **nur**, wenn ein aktives Makro Systemereignisse braucht,
-  und registriert nur die nötigen Empfänger. Kein GPS, keine Sensoren im Dauerbetrieb.
+  und registriert nur die nötigen Empfänger. Kein GPS.
+- Schütteln/Umdrehen nutzen den Bewegungssensor nur bei eingeschaltetem Bildschirm.
 
 ## Installieren
 

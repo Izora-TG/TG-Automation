@@ -6,6 +6,7 @@ import android.app.NotificationManager
 import com.tg.automation.data.LogRepository
 import com.tg.automation.data.MacroRepository
 import com.tg.automation.data.Prefs
+import com.tg.automation.data.VarStore
 import com.tg.automation.engine.Scheduler
 import com.tg.automation.service.AutomationService
 
@@ -14,6 +15,7 @@ class App : Application() {
         super.onCreate()
         instance = this
         Prefs.init(this)
+        VarStore.init(this)
         MacroRepository.init(this)
         LogRepository.init(this)
         createChannels()

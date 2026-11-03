@@ -2,6 +2,6 @@
 <resources>
     <string name="app_name">TG Automation</string>
     <string name="accessibility_label">TG Automation – Steuerung</string>
-    <string name="accessibility_description">Erlaubt TG Automation, erkannte App-Starts als Auslöser zu nutzen und das Handy zu steuern (Home, Zurück, Sperren, Screenshot, Apps im Hintergrund öffnen). Es werden keine Bildschirminhalte gelesen.</string>
+    <string name="accessibility_description">Erlaubt TG Automation, erkannte App-Starts als Auslöser zu nutzen und das Handy zu steuern (Home, Zurück, Sperren, Screenshot, Tippen, Wischen, Apps im Hintergrund öffnen). Es werden keine Bildschirminhalte gelesen.</string>
     <string name="tile_label">Automationen</string>
 </resources>

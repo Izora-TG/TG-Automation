@@ -10,6 +10,27 @@ import com.tg.automation.engine.Engine
 class NotificationWatcher : NotificationListenerService() {
     private var lastSignature = ""
 
+    override fun onListenerConnected() {
+        super.onListenerConnected()
+        instance = this
+    }
+
+    override fun onListenerDisconnected() {
+        instance = null
+        super.onListenerDisconnected()
+    }
+
+    override fun onDestroy() {
+        instance = null
+        super.onDestroy()
+    }
+
+    companion object {
+        @Volatile
+        var instance: NotificationWatcher? = null
+            private set
+    }
+
     override fun onNotificationPosted(sbn: StatusBarNotification) {
         if (sbn.packageName == packageName) return
         if (!Engine.hasTrigger("notification")) return

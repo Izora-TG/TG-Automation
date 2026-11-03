@@ -37,6 +37,7 @@ import androidx.compose.material3.TimePicker
 import androidx.compose.material3.rememberTimePickerState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateMapOf
 import androidx.compose.runtime.mutableStateOf
@@ -50,6 +51,7 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
 import androidx.core.graphics.drawable.toBitmap
+import com.tg.automation.data.MacroRepository
 import com.tg.automation.engine.AppInfo
 import com.tg.automation.engine.Apps
 import com.tg.automation.engine.Conditions
@@ -174,6 +176,17 @@ private fun ParamEditor(p: Param, value: String, onChange: (String) -> Unit) {
         }
 
         is Param.App -> AppField(p, value, onChange)
+
+        is Param.MacroRef -> Column {
+            Text(p.label, style = MaterialTheme.typography.labelLarge)
+            val macros = MacroRepository.macros.collectAsState().value
+            if (macros.isEmpty()) Text("Noch keine anderen Makros", style = MaterialTheme.typography.bodySmall)
+            FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                macros.forEach { m ->
+                    FilterChip(selected = value == m.id, onClick = { onChange(m.id) }, label = { Text(m.name) })
+                }
+            }
+        }
     }
 }
 

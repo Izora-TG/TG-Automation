@@ -1,6 +1,7 @@
 package com.tg.automation.service
 
 import android.app.Notification
+import android.app.NotificationManager
 import android.app.PendingIntent
 import android.app.Service
 import android.bluetooth.BluetoothDevice
@@ -23,6 +24,7 @@ import android.os.Build
 import android.os.Handler
 import android.os.IBinder
 import android.os.Looper
+import android.os.PowerManager
 import android.os.SystemClock
 import android.telephony.TelephonyManager
 import android.util.Log
@@ -52,6 +54,8 @@ class AutomationService : Service() {
     private var lastBattery: Int? = null
     private var lastCallState: String? = null
     private var lastHeadsetEvent = 0L
+    private var cellCallback: ConnectivityManager.NetworkCallback? = null
+    private var motion: MotionDetector? = null
 
     override fun onBind(intent: Intent?): IBinder? = null
 
@@ -113,6 +117,15 @@ class AutomationService : Service() {
         }
         if ("airplane" in types) filter.addAction(Intent.ACTION_AIRPLANE_MODE_CHANGED)
         if ("call" in types) filter.addAction(TelephonyManager.ACTION_PHONE_STATE_CHANGED)
+        if ("ringer_changed" in types) filter.addAction(AudioManager.RINGER_MODE_CHANGED_ACTION)
+        if ("dnd_changed" in types) filter.addAction(NotificationManager.ACTION_INTERRUPTION_FILTER_CHANGED)
+        if ("power_save" in types) filter.addAction(PowerManager.ACTION_POWER_SAVE_MODE_CHANGED)
+        val needsMotion = "shake" in types || "face_down" in types
+        if (needsMotion) {
+            // Sensoren nur bei eingeschaltetem Bildschirm – dafür auf an/aus hören.
+            filter.addAction(Intent.ACTION_SCREEN_ON)
+            filter.addAction(Intent.ACTION_SCREEN_OFF)
+        }
 
         if (filter.countActions() > 0) {
             val r = EventReceiver()
@@ -121,6 +134,10 @@ class AutomationService : Service() {
         }
         if ("wifi" in types) registerWifi()
         if ("headset" in types) registerAudio()
+        if ("mobile_data" in types) registerCellular()
+        if (needsMotion) {
+            motion = MotionDetector(this).also { if (DeviceState.isScreenOn(this)) it.start() }
+        }
     }
 
     private fun unregisterAll() {
@@ -134,6 +151,12 @@ class AutomationService : Service() {
             runCatching { getSystemService(AudioManager::class.java).unregisterAudioDeviceCallback(cb) }
         }
         audioCallback = null
+        cellCallback?.let { cb ->
+            runCatching { getSystemService(ConnectivityManager::class.java).unregisterNetworkCallback(cb) }
+        }
+        cellCallback = null
+        motion?.stop()
+        motion = null
     }
 
     private inner class EventReceiver : BroadcastReceiver() {
@@ -152,8 +175,20 @@ class AutomationService : Service() {
                 }
                 Intent.ACTION_POWER_CONNECTED -> Engine.dispatch("power", mapOf("state" to "connected"))
                 Intent.ACTION_POWER_DISCONNECTED -> Engine.dispatch("power", mapOf("state" to "disconnected"))
-                Intent.ACTION_SCREEN_ON -> Engine.dispatch("screen", mapOf("state" to "on"))
-                Intent.ACTION_SCREEN_OFF -> Engine.dispatch("screen", mapOf("state" to "off"))
+                Intent.ACTION_SCREEN_ON -> {
+                    motion?.start()
+                    Engine.dispatch("screen", mapOf("state" to "on"))
+                }
+                Intent.ACTION_SCREEN_OFF -> {
+                    motion?.stop()
+                    Engine.dispatch("screen", mapOf("state" to "off"))
+                }
+                AudioManager.RINGER_MODE_CHANGED_ACTION ->
+                    Engine.dispatch("ringer_changed", mapOf("mode" to DeviceState.ringerMode(context)))
+                NotificationManager.ACTION_INTERRUPTION_FILTER_CHANGED ->
+                    Engine.dispatch("dnd_changed", mapOf("state" to if (DeviceState.isDndOn(context)) "on" else "off"))
+                PowerManager.ACTION_POWER_SAVE_MODE_CHANGED ->
+                    Engine.dispatch("power_save", mapOf("state" to if (DeviceState.isPowerSave(context)) "on" else "off"))
                 Intent.ACTION_USER_PRESENT -> Engine.dispatch("screen", mapOf("state" to "unlocked"))
                 BluetoothDevice.ACTION_ACL_CONNECTED, BluetoothDevice.ACTION_ACL_DISCONNECTED -> {
                     val device = IntentCompat.getParcelableExtra(intent, BluetoothDevice.EXTRA_DEVICE, BluetoothDevice::class.java)
@@ -242,6 +277,39 @@ class AutomationService : Service() {
         return ssid?.takeIf { it != UNKNOWN_SSID }?.removeSurrounding("\"").orEmpty()
     }
 
+    // ───────────── Mobile Daten ─────────────
+
+    private fun registerCellular() {
+        val cm = getSystemService(ConnectivityManager::class.java)
+        val request = NetworkRequest.Builder()
+            .addTransportType(NetworkCapabilities.TRANSPORT_CELLULAR)
+            .addCapability(NetworkCapabilities.NET_CAPABILITY_INTERNET)
+            .build()
+        val registeredAt = SystemClock.elapsedRealtime()
+        val active = HashSet<Network>()
+        val cb = object : ConnectivityManager.NetworkCallback() {
+            override fun onAvailable(network: Network) {
+                val wasEmpty = active.isEmpty()
+                active.add(network)
+                if (wasEmpty && SystemClock.elapsedRealtime() - registeredAt > 2_000) {
+                    Engine.dispatch("mobile_data", mapOf("state" to "connected"))
+                }
+            }
+
+            override fun onLost(network: Network) {
+                if (active.remove(network) && active.isEmpty()) {
+                    Engine.dispatch("mobile_data", mapOf("state" to "disconnected"))
+                }
+            }
+        }
+        try {
+            cm.registerNetworkCallback(request, cb)
+            cellCallback = cb
+        } catch (e: Exception) {
+            Log.w(TAG, "Mobilfunk-Überwachung nicht möglich", e)
+        }
+    }
+
     // ───────────── Kopfhörer ─────────────
 
     private fun registerAudio() {
@@ -286,7 +354,7 @@ class AutomationService : Service() {
             if (!Prefs.masterEnabled) return emptySet()
             return MacroRepository.macros.value
                 .filter { it.enabled }
-                .flatMap { it.triggers }
+                .flatMap { it.triggerNodes }
                 .map { it.type }
                 .filter { Registry.def(it)?.needsService == true }
                 .toSet()

@@ -87,6 +87,7 @@ import com.tg.automation.data.MacroRepository
 import com.tg.automation.data.Prefs
 import com.tg.automation.engine.Engine
 import com.tg.automation.engine.Permissions
+import com.tg.automation.model.Kind
 import com.tg.automation.model.Macro
 import com.tg.automation.model.Registry
 import com.tg.automation.ui.RunMacroActivity
@@ -230,12 +231,12 @@ private fun MacroList(onEdit: (Macro) -> Unit, onNew: () -> Unit, onOpenSetup: (
                 onEdit = { onEdit(m) },
                 onToggle = { MacroRepository.setEnabled(m.id, it) },
                 onRun = {
-                    Engine.runMacro(m, emptyMap(), checkConstraints = false, source = "Manuell")
+                    Engine.runManually(m, "Manuell")
                     Toast.makeText(ctx, "▶ ${m.name}", Toast.LENGTH_SHORT).show()
                 },
                 onShortcut = { addShortcut(ctx, m) },
                 onDuplicate = {
-                    MacroRepository.upsert(m.copy(id = UUID.randomUUID().toString(), name = "${m.name} (Kopie)", lastRun = 0))
+                    MacroRepository.upsert(m.copy(id = UUID.randomUUID().toString(), name = "${m.name} (Kopie)", lastRun = 0).withNewIds())
                 },
                 onDelete = { toDelete = m },
             )
@@ -316,7 +317,7 @@ private fun MacroCard(
     onDelete: () -> Unit,
 ) {
     var menu by remember { mutableStateOf(false) }
-    val icon = macro.triggers.firstOrNull()?.let { Registry.def(it.type)?.icon } ?: Icons.Default.Bolt
+    val icon = macro.triggerNodes.firstOrNull()?.let { Registry.def(it.type)?.icon } ?: Icons.Default.Bolt
     ElevatedCard(onClick = onEdit, modifier = Modifier.fillMaxWidth()) {
         Column(Modifier.padding(start = 16.dp, top = 14.dp, end = 8.dp, bottom = 6.dp)) {
             Row(verticalAlignment = Alignment.CenterVertically) {
@@ -381,9 +382,10 @@ private fun MacroCard(
 }
 
 private fun summary(m: Macro): String {
-    val triggers = m.triggers.mapNotNull { t -> Registry.def(t.type)?.let { it.summary(t).ifBlank { it.title } } }
-    val actions = m.actions.mapNotNull { Registry.def(it.type)?.title }
-    val cond = if (m.constraints.isNotEmpty()) " (+${m.constraints.size} Bed.)" else ""
+    val triggers = m.triggerNodes.mapNotNull { n -> Registry.def(n.type)?.let { it.summary(n.component).ifBlank { it.title } } }
+    val conditions = m.nodes.count { it.kind == Kind.CONSTRAINT }
+    val actions = m.nodes.filter { it.kind == Kind.ACTION }.mapNotNull { Registry.def(it.type)?.title }.distinct()
+    val cond = if (conditions > 0) " (+$conditions Bed.)" else ""
     return "${triggers.joinToString(" oder ")}$cond → ${actions.joinToString(", ")}"
 }
 
@@ -421,7 +423,7 @@ private fun NewMacroSheet(onDismiss: () -> Unit, onPick: (Macro) -> Unit) {
             item {
                 ListItem(
                     headlineContent = { Text("Leeres Makro") },
-                    supportingContent = { Text("Selbst zusammenstellen") },
+                    supportingContent = { Text("Blöcke selbst auf dem Board verbinden") },
                     leadingContent = { Icon(Icons.AutoMirrored.Filled.NoteAdd, null) },
                     trailingContent = { Icon(Icons.AutoMirrored.Filled.ArrowForward, null) },
                     modifier = Modifier.clickable { onPick(Macro(name = "")) },

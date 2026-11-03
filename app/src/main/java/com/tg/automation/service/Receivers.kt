@@ -13,15 +13,15 @@ class AlarmReceiver : BroadcastReceiver() {
         if (intent.action != Scheduler.ACTION) return
         val segments = intent.data?.pathSegments ?: return
         val id = segments.getOrNull(0) ?: return
-        val index = segments.getOrNull(1)?.toIntOrNull() ?: return
+        val nodeId = segments.getOrNull(1) ?: return
         val pending = goAsync()
         // Nächsten Termin direkt wieder planen.
         val macro = MacroRepository.get(id)
-        val trigger = macro?.triggers?.getOrNull(index)
+        val trigger = macro?.node(nodeId)
         if (macro != null && macro.enabled && trigger != null) {
-            Scheduler.schedule(context, id, index, trigger)
+            Scheduler.schedule(context, id, nodeId, trigger.component)
         }
-        Engine.finishWhenDone(pending, listOfNotNull(Engine.fireAlarm(id, index)))
+        Engine.finishWhenDone(pending, listOfNotNull(Engine.fireAlarm(id, nodeId)))
     }
 }
 

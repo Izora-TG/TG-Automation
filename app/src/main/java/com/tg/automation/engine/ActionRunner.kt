@@ -11,9 +11,12 @@ import android.content.Intent
 import android.content.pm.PackageManager
 import android.hardware.camera2.CameraCharacteristics
 import android.hardware.camera2.CameraManager
+import android.graphics.Path
 import android.media.AudioManager
+import android.media.RingtoneManager
 import android.net.Uri
 import android.os.Build
+import android.provider.AlarmClock
 import android.os.Handler
 import android.os.Looper
 import android.os.VibrationEffect
@@ -29,10 +32,13 @@ import androidx.core.app.NotificationManagerCompat
 import androidx.core.content.ContextCompat
 import com.tg.automation.App
 import com.tg.automation.R
+import com.tg.automation.data.LogRepository
+import com.tg.automation.data.VarStore
 import com.tg.automation.model.Component
 import com.tg.automation.model.int
 import com.tg.automation.model.p
 import com.tg.automation.service.ControlService
+import com.tg.automation.service.NotificationWatcher
 import com.tg.automation.ui.MainActivity
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.delay
@@ -51,7 +57,7 @@ class ActionException(message: String) : Exception(message)
 
 object ActionRunner {
 
-    suspend fun run(ctx: Context, a: Component, vars: MutableMap<String, String>) {
+    suspend fun run(ctx: Context, a: Component, vars: MutableMap<String, String>, macroName: String = "") {
         fun t(key: String) = Vars.apply(a.p(key), vars)
         when (a.type) {
             "notify" -> notify(ctx, t("title"), t("text"))
@@ -94,6 +100,28 @@ object ActionRunner {
                     .setPrimaryClip(ClipData.newPlainText("TG Automation", t("text")))
             }
             "wait" -> delay(a.int("seconds", 1).coerceIn(1, 3600) * 1000L)
+            "tap" -> gesture(ctx, a.int("x", 50), a.int("y", 50), a.p("press") == "long")
+            "swipe" -> swipe(ctx, a.p("dir"))
+            "volume_step" -> volumeStep(ctx, a.p("stream"), a.p("dir"))
+            "play_sound" -> playSound(ctx, a.p("sound"))
+            "clear_notifications" -> {
+                val svc = NotificationWatcher.instance
+                    ?: throw ActionException("Benachrichtigungszugriff ist nicht aktiv")
+                svc.cancelAllNotifications()
+            }
+            "set_alarm" -> {
+                val time = Conditions.parseTime(a.p("time"))
+                startActivity(
+                    ctx,
+                    Intent(AlarmClock.ACTION_SET_ALARM)
+                        .putExtra(AlarmClock.EXTRA_HOUR, time.hour)
+                        .putExtra(AlarmClock.EXTRA_MINUTES, time.minute)
+                        .putExtra(AlarmClock.EXTRA_MESSAGE, t("label"))
+                        .putExtra(AlarmClock.EXTRA_SKIP_UI, true),
+                )
+            }
+            "set_var" -> setVar(a.p("name"), a.p("op"), t("value"))
+            "log" -> LogRepository.add(macroName.ifBlank { "Makro" }, t("text"))
             else -> throw ActionException("Unbekannte Aktion: ${a.type}")
         }
     }
@@ -334,6 +362,86 @@ object ActionRunner {
         }
     }
 
+    private fun setVar(rawName: String, op: String, value: String) {
+        val name = rawName.trim()
+        if (name.isEmpty()) throw ActionException("Kein Variablenname angegeben")
+        val current = VarStore.get(name).orEmpty()
+        fun num(s: String) = s.replace(',', '.').toDoubleOrNull()
+        fun fmt(d: Double) = if (d == Math.floor(d) && !d.isInfinite()) d.toLong().toString() else d.toString()
+        val result = when (op) {
+            "add" -> fmt((num(current) ?: 0.0) + (num(value) ?: throw ActionException("„$value“ ist keine Zahl")))
+            "sub" -> fmt((num(current) ?: 0.0) - (num(value) ?: throw ActionException("„$value“ ist keine Zahl")))
+            "append" -> current + value
+            else -> value
+        }
+        VarStore.set(name, result)
+    }
+
+    private suspend fun gesture(ctx: Context, xPct: Int, yPct: Int, long: Boolean) {
+        val svc = ControlService.instance
+            ?: throw ActionException("Bedienungshilfe „TG Automation – Steuerung“ ist nicht aktiv")
+        val dm = ctx.resources.displayMetrics
+        val x = dm.widthPixels * xPct.coerceIn(0, 100) / 100f
+        val y = dm.heightPixels * yPct.coerceIn(0, 100) / 100f
+        val path = Path().apply { moveTo(x.coerceAtLeast(1f), y.coerceAtLeast(1f)) }
+        if (!svc.dispatch(path, if (long) 800L else 60L)) throw ActionException("Das System hat die Geste abgelehnt")
+    }
+
+    private suspend fun swipe(ctx: Context, dir: String) {
+        val svc = ControlService.instance
+            ?: throw ActionException("Bedienungshilfe „TG Automation – Steuerung“ ist nicht aktiv")
+        val dm = ctx.resources.displayMetrics
+        val w = dm.widthPixels.toFloat()
+        val h = dm.heightPixels.toFloat()
+        val (from, to) = when (dir) {
+            "down" -> (w / 2 to h * 0.3f) to (w / 2 to h * 0.7f)
+            "left" -> (w * 0.8f to h / 2) to (w * 0.2f to h / 2)
+            "right" -> (w * 0.2f to h / 2) to (w * 0.8f to h / 2)
+            else -> (w / 2 to h * 0.7f) to (w / 2 to h * 0.3f)
+        }
+        val path = Path().apply {
+            moveTo(from.first, from.second)
+            lineTo(to.first, to.second)
+        }
+        if (!svc.dispatch(path, 300L)) throw ActionException("Das System hat die Geste abgelehnt")
+    }
+
+    private fun volumeStep(ctx: Context, streamName: String, dir: String) {
+        val am = ctx.getSystemService(AudioManager::class.java)
+        val stream = when (streamName) {
+            "ring" -> AudioManager.STREAM_RING
+            "alarm" -> AudioManager.STREAM_ALARM
+            else -> AudioManager.STREAM_MUSIC
+        }
+        val direction = when (dir) {
+            "down" -> AudioManager.ADJUST_LOWER
+            "mute" -> AudioManager.ADJUST_MUTE
+            "unmute" -> AudioManager.ADJUST_UNMUTE
+            else -> AudioManager.ADJUST_RAISE
+        }
+        try {
+            am.adjustStreamVolume(stream, direction, AudioManager.FLAG_SHOW_UI)
+        } catch (e: SecurityException) {
+            throw ActionException("Zugriff auf „Nicht stören“ nötig")
+        }
+    }
+
+    private suspend fun playSound(ctx: Context, sound: String) {
+        val type = when (sound) {
+            "ringtone" -> RingtoneManager.TYPE_RINGTONE
+            "alarm" -> RingtoneManager.TYPE_ALARM
+            else -> RingtoneManager.TYPE_NOTIFICATION
+        }
+        val uri = RingtoneManager.getDefaultUri(type) ?: throw ActionException("Kein Ton eingestellt")
+        val ringtone = RingtoneManager.getRingtone(ctx, uri) ?: throw ActionException("Ton nicht verfügbar")
+        ringtone.play()
+        // Klingel-/Wecktöne laufen endlos – nach ein paar Sekunden stoppen.
+        if (type != RingtoneManager.TYPE_NOTIFICATION) {
+            delay(5_000)
+            ringtone.stop()
+        }
+    }
+
     private fun withMain(block: () -> Unit) {
         if (Looper.myLooper() == Looper.getMainLooper()) block() else Handler(Looper.getMainLooper()).post(block)
     }
@@ -371,7 +479,10 @@ object Torch {
 
 /** Ersetzt {platzhalter} in Texten. */
 object Vars {
-    private val regex = Regex("\\{([a-z_]+)\\}")
+    private val regex = Regex("\\{([A-Za-z0-9_]+)\\}")
     fun apply(text: String, vars: Map<String, String>): String =
-        regex.replace(text) { m -> vars[m.groupValues[1]] ?: m.value }
+        regex.replace(text) { m ->
+            val key = m.groupValues[1]
+            vars[key] ?: VarStore.get(key) ?: m.value
+        }
 }

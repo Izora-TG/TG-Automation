@@ -35,13 +35,14 @@ object Scheduler {
         if (Prefs.masterEnabled) {
             for (m in MacroRepository.macros.value) {
                 if (!m.enabled) continue
-                m.triggers.forEachIndexed { i, t ->
-                    if (!isTimed(t)) return@forEachIndexed
-                    val sig = "${m.id}|$i|${t.type}|${t.params.toSortedMap()}"
+                for (node in m.triggerNodes) {
+                    val t = node.component
+                    if (!isTimed(t)) continue
+                    val sig = "${m.id}|${node.id}|${t.type}|${t.params.toSortedMap()}"
                     now += sig
-                    val exists = pendingIntent(ctx, m.id, i, create = false) != null
+                    val exists = pendingIntent(ctx, m.id, node.id, create = false) != null
                     // Uhrzeiten immer neu berechnen; Intervalle nur, wenn neu oder geändert.
-                    if (t.type == "time" || sig !in old || !exists) schedule(ctx, m.id, i, t)
+                    if (t.type == "time" || sig !in old || !exists) schedule(ctx, m.id, node.id, t)
                 }
             }
         }
@@ -49,7 +50,7 @@ object Scheduler {
         for (sig in old) {
             val parts = sig.split("|")
             val id = parts.getOrNull(0) ?: continue
-            val idx = parts.getOrNull(1)?.toIntOrNull() ?: continue
+            val idx = parts.getOrNull(1) ?: continue
             if ("$id|$idx" in activeKeys) continue
             pendingIntent(ctx, id, idx, create = false)?.let {
                 ctx.getSystemService(AlarmManager::class.java).cancel(it)
@@ -59,13 +60,13 @@ object Scheduler {
         prefs.edit().putStringSet(KEY, now).apply()
     }
 
-    fun schedule(ctx: Context, macroId: String, index: Int, t: Component) {
+    fun schedule(ctx: Context, macroId: String, nodeId: String, t: Component) {
         val at = when (t.type) {
             "time" -> nextTime(t.p("time"), t.p("days")) ?: return
             "interval" -> System.currentTimeMillis() + t.int("minutes", 60).coerceAtLeast(15) * 60_000L
             else -> return
         }
-        val pi = pendingIntent(ctx, macroId, index, create = true) ?: return
+        val pi = pendingIntent(ctx, macroId, nodeId, create = true) ?: return
         val am = ctx.getSystemService(AlarmManager::class.java)
         try {
             when {
@@ -94,10 +95,10 @@ object Scheduler {
         return null
     }
 
-    private fun pendingIntent(ctx: Context, macroId: String, index: Int, create: Boolean): PendingIntent? {
+    private fun pendingIntent(ctx: Context, macroId: String, nodeId: String, create: Boolean): PendingIntent? {
         val intent = Intent(ctx, AlarmReceiver::class.java)
             .setAction(ACTION)
-            .setData(Uri.parse("tgauto://alarm/$macroId/$index"))
+            .setData(Uri.parse("tgauto://alarm/$macroId/$nodeId"))
         val flags = PendingIntent.FLAG_IMMUTABLE or
             if (create) PendingIntent.FLAG_UPDATE_CURRENT else PendingIntent.FLAG_NO_CREATE
         return PendingIntent.getBroadcast(ctx, 0, intent, flags)

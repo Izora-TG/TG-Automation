@@ -22,11 +22,16 @@ object MacroRepository {
 
     fun init(ctx: Context) {
         file = File(ctx.filesDir, "macros.json")
-        _macros.value = try {
+        val loaded = try {
             if (file.exists()) json.decodeFromString(serializer, file.readText()) else emptyList()
         } catch (e: Exception) {
             Log.e("MacroRepository", "Konnte Makros nicht laden", e)
             emptyList()
+        }
+        _macros.value = loaded
+        // Alte Listen-Makros in Blöcke umwandeln.
+        if (loaded.any { it.needsMigration() }) {
+            update { list -> list.map { if (it.needsMigration()) it.migrated() else it } }
         }
     }
 
