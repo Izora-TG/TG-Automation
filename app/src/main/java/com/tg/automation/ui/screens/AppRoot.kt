@@ -25,7 +25,7 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowForward
 import androidx.compose.material.icons.automirrored.filled.List
 import androidx.compose.material.icons.filled.Add
-import androidx.compose.material.icons.filled.AddToHomeScreen
+import androidx.compose.material.icons.automirrored.filled.AddToHomeScreen
 import androidx.compose.material.icons.filled.AutoAwesome
 import androidx.compose.material.icons.filled.Bolt
 import androidx.compose.material.icons.filled.ContentCopy
@@ -33,7 +33,7 @@ import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.DeleteSweep
 import androidx.compose.material.icons.filled.History
 import androidx.compose.material.icons.filled.MoreVert
-import androidx.compose.material.icons.filled.NoteAdd
+import androidx.compose.material.icons.automirrored.filled.NoteAdd
 import androidx.compose.material.icons.filled.PauseCircle
 import androidx.compose.material.icons.filled.PlayArrow
 import androidx.compose.material.icons.filled.Security
@@ -360,7 +360,7 @@ private fun MacroCard(
                     DropdownMenu(expanded = menu, onDismissRequest = { menu = false }) {
                         DropdownMenuItem(
                             text = { Text("Auf Homescreen legen") },
-                            leadingIcon = { Icon(Icons.Default.AddToHomeScreen, null) },
+                            leadingIcon = { Icon(Icons.AutoMirrored.Filled.AddToHomeScreen, null) },
                             onClick = { menu = false; onShortcut() },
                         )
                         DropdownMenuItem(
@@ -422,7 +422,7 @@ private fun NewMacroSheet(onDismiss: () -> Unit, onPick: (Macro) -> Unit) {
                 ListItem(
                     headlineContent = { Text("Leeres Makro") },
                     supportingContent = { Text("Selbst zusammenstellen") },
-                    leadingContent = { Icon(Icons.Default.NoteAdd, null) },
+                    leadingContent = { Icon(Icons.AutoMirrored.Filled.NoteAdd, null) },
                     trailingContent = { Icon(Icons.AutoMirrored.Filled.ArrowForward, null) },
                     modifier = Modifier.clickable { onPick(Macro(name = "")) },
                 )
