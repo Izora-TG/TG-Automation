@@ -383,7 +383,7 @@ private fun MacroCard(
 
 private fun summary(m: Macro): String {
     val triggers = m.triggerNodes.mapNotNull { n -> Registry.def(n.type)?.let { it.summary(n.component).ifBlank { it.title } } }
-    val conditions = m.nodes.count { it.kind == Kind.CONSTRAINT }
+    val conditions = m.nodes.count { it.kind == Kind.CONSTRAINT || it.kind == Kind.QUESTION }
     val actions = m.nodes.filter { it.kind == Kind.ACTION }.mapNotNull { Registry.def(it.type)?.title }.distinct()
     val cond = if (conditions > 0) " (+$conditions Bed.)" else ""
     return "${triggers.joinToString(" oder ")}$cond → ${actions.joinToString(", ")}"

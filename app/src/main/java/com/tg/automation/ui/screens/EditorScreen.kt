@@ -6,7 +6,10 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.gestures.detectDragGestures
+import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.foundation.gestures.detectTapGestures
+import androidx.compose.foundation.horizontalScroll
+import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.gestures.detectTransformGestures
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -128,7 +131,7 @@ private fun outPoint(n: Node, port: String) = Offset(n.x + portX(port), n.y + TO
 private fun inPoint(n: Node) = Offset(n.x + NODE_W / 2, n.y + TOP)
 
 private fun outPorts(kind: Kind?): List<String> = when (kind) {
-    Kind.CONSTRAINT -> listOf(PORT_YES, PORT_NO)
+    Kind.CONSTRAINT, Kind.QUESTION -> listOf(PORT_YES, PORT_NO)
     null -> emptyList()
     else -> listOf(PORT_OUT)
 }
@@ -228,7 +231,7 @@ fun EditorScreen(initial: Macro, isNew: Boolean, onClose: () -> Unit) {
         val (pos, link) = when {
             nf != null -> freeSpot(nf.at.x - NODE_W / 2, nf.at.y) to (nf.from to nf.port)
             sel != null && def.kind != Kind.TRIGGER -> {
-                val port = if (sel.kind == Kind.CONSTRAINT) PORT_YES else PORT_OUT
+                val port = if (sel.kind?.branches == true) PORT_YES else PORT_OUT
                 freeSpot(sel.x, sel.y + ROW) to (sel.id to port)
             }
             else -> {
@@ -541,7 +544,7 @@ private fun EmptyBoardHint(modifier: Modifier) {
             "1. Tippe auf „+ Block“ und wähle einen Auslöser.\n" +
                 "2. Tippe den Block an und dann wieder auf „+“ – der neue Block wird automatisch verbunden.\n" +
                 "3. Oder ziehe vom ● unter einem Block auf einen anderen.\n" +
-                "Bedingungen haben zwei Ausgänge: Ja und Nein.",
+                "Bedingungen und Abfragen haben zwei Ausgänge: Ja und Nein.",
             style = MaterialTheme.typography.bodyMedium,
             color = MaterialTheme.colorScheme.onSurfaceVariant,
         )
@@ -707,9 +710,11 @@ private fun NodeBlock(
         def?.requirements?.invoke(node.component).orEmpty().any { !Permissions.isGranted(ctx, it) }
     }
     val cs = MaterialTheme.colorScheme
+    val dark = isSystemInDarkTheme()
     val (bg, fg) = when (kind) {
         Kind.TRIGGER -> cs.primaryContainer to cs.onPrimaryContainer
         Kind.CONSTRAINT -> cs.tertiaryContainer to cs.onTertiaryContainer
+        Kind.QUESTION -> if (dark) Color(0xFF4A3A00) to Color(0xFFFFE08A) else Color(0xFFFFE9A8) to Color(0xFF3A2D00)
         else -> cs.secondaryContainer to cs.onSecondaryContainer
     }
     val currentSelected by rememberUpdatedState(selected)
@@ -755,14 +760,15 @@ private fun NodeBlock(
                 Text(
                     def?.summary?.invoke(node.component).orEmpty(),
                     style = MaterialTheme.typography.bodySmall.copy(fontSize = 11.sp),
-                    maxLines = if (kind == Kind.CONSTRAINT) 1 else 2,
+                    maxLines = if (kind?.branches == true) 1 else 2,
                     overflow = TextOverflow.Ellipsis,
                 )
-                if (kind == Kind.CONSTRAINT) {
+                if (kind?.branches == true) {
+                    val labels = def?.portLabels ?: ("Ja" to "Nein")
                     Spacer(Modifier.weight(1f))
                     Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceAround) {
-                        Text("Ja", style = MaterialTheme.typography.labelSmall, color = GREEN, fontWeight = FontWeight.Bold)
-                        Text("Nein", style = MaterialTheme.typography.labelSmall, color = cs.error, fontWeight = FontWeight.Bold)
+                        Text(labels.first, style = MaterialTheme.typography.labelSmall, color = GREEN, fontWeight = FontWeight.Bold)
+                        Text(labels.second, style = MaterialTheme.typography.labelSmall, color = cs.error, fontWeight = FontWeight.Bold)
                     }
                 }
             }
@@ -844,7 +850,10 @@ private fun BlockPicker(
             modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 8.dp),
         )
         if (query.isBlank()) {
-            Row(Modifier.padding(horizontal = 16.dp), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+            Row(
+                Modifier.horizontalScroll(rememberScrollState()).padding(horizontal = 16.dp),
+                horizontalArrangement = Arrangement.spacedBy(8.dp),
+            ) {
                 Kind.entries.filter { allowTriggers || it != Kind.TRIGGER }.forEach { k ->
                     FilterChip(
                         selected = kind == k,

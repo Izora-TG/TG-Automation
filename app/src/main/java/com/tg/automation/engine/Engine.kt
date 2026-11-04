@@ -6,6 +6,7 @@ import com.tg.automation.App
 import com.tg.automation.data.LogRepository
 import com.tg.automation.data.MacroRepository
 import com.tg.automation.data.Prefs
+import com.tg.automation.data.VarStore
 import com.tg.automation.model.Component
 import com.tg.automation.model.Kind
 import com.tg.automation.model.Macro
@@ -103,6 +104,10 @@ object Engine {
                     }
                     if (ok) PORT_YES else PORT_NO
                 }
+                Kind.QUESTION -> {
+                    actions++
+                    ask(ctx, macro.name, node, vars)
+                }
                 Kind.ACTION -> {
                     actions++
                     try {
@@ -130,6 +135,26 @@ object Engine {
             if (errors == 0) "Ausgeführt · $source" else "Ausgeführt mit $errors Fehler(n) · $source",
             error = errors > 0,
         )
+    }
+
+    /** Stellt eine Abfrage und gibt den Ausgang zurück (Ja/OK oder Nein/Abbruch). */
+    private suspend fun ask(ctx: android.content.Context, macroName: String, node: Node, vars: MutableMap<String, String>): String {
+        val c = node.component
+        val text = Vars.apply(c.p("text"), vars)
+        val params = c.params.mapValues { (k, v) -> if (k == "var") v else Vars.apply(v, vars) }
+        val answer = Questions.ask(ctx, c.type, macroName.ifBlank { "TG Automation" }, text, params, c.int("timeout", 120))
+        if (c.type == "ask_yes_no") {
+            vars["answer"] = when (answer) { "yes" -> "ja"; "no" -> "nein"; else -> "" }
+            return if (answer == "yes") PORT_YES else PORT_NO
+        }
+        if (answer == null) return PORT_NO
+        val name = c.p("var").trim().removePrefix("{").removeSuffix("}")
+        vars["answer"] = answer
+        if (name.isNotEmpty()) {
+            vars[name] = answer
+            VarStore.set(name, answer)
+        }
+        return PORT_YES
     }
 
     private fun runOther(id: String, depth: Int, source: String) {

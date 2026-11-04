@@ -39,6 +39,11 @@ class App : Application() {
             },
         )
         nm.createNotificationChannel(
+            NotificationChannel(CHANNEL_QUESTIONS, "Abfragen", NotificationManager.IMPORTANCE_HIGH).apply {
+                description = "Fragen deiner Makros, die auf eine Antwort warten."
+            },
+        )
+        nm.createNotificationChannel(
             NotificationChannel(CHANNEL_MACROS, "Makro-Benachrichtigungen", NotificationManager.IMPORTANCE_DEFAULT).apply {
                 description = "Benachrichtigungen, die von deinen Makros angezeigt werden."
             },
@@ -48,6 +53,7 @@ class App : Application() {
     companion object {
         const val CHANNEL_SERVICE = "service"
         const val CHANNEL_MACROS = "macros"
+        const val CHANNEL_QUESTIONS = "questions"
         lateinit var instance: App
             private set
     }

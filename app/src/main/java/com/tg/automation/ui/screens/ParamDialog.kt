@@ -86,7 +86,7 @@ fun ParamDialog(def: ComponentDef, initial: Component, onDismiss: () -> Unit, on
                 def.params.forEach { p ->
                     ParamEditor(p, values[p.key] ?: p.default) { values[p.key] = it }
                 }
-                if (hasText && def.kind == Kind.ACTION) {
+                if (hasText && (def.kind == Kind.ACTION || def.kind == Kind.QUESTION)) {
                     Text(
                         VARIABLE_HINT,
                         style = MaterialTheme.typography.labelSmall,

@@ -110,12 +110,29 @@ object ActionRunner {
                 svc.cancelAllNotifications()
             }
             "set_alarm" -> {
-                val time = Conditions.parseTime(a.p("time"))
+                val fromVar = t("from_var").trim()
+                if (fromVar.isNotEmpty() && !Regex("\\d{1,2}:\\d{2}").matches(fromVar)) {
+                    throw ActionException("„$fromVar“ ist keine Uhrzeit (HH:MM)")
+                }
+                val time = Conditions.parseTime(fromVar.ifEmpty { a.p("time") })
                 startActivity(
                     ctx,
                     Intent(AlarmClock.ACTION_SET_ALARM)
                         .putExtra(AlarmClock.EXTRA_HOUR, time.hour)
                         .putExtra(AlarmClock.EXTRA_MINUTES, time.minute)
+                        .putExtra(AlarmClock.EXTRA_MESSAGE, t("label"))
+                        .putExtra(AlarmClock.EXTRA_SKIP_UI, true),
+                )
+            }
+            "set_timer" -> {
+                val raw = t("minutes").trim().replace(',', '.')
+                val minutes = raw.toDoubleOrNull() ?: throw ActionException("„$raw“ ist keine Zahl")
+                val seconds = (minutes * 60).roundToInt()
+                if (seconds !in 1..86_400) throw ActionException("Timer muss zwischen 1 Sekunde und 24 Stunden liegen")
+                startActivity(
+                    ctx,
+                    Intent(AlarmClock.ACTION_SET_TIMER)
+                        .putExtra(AlarmClock.EXTRA_LENGTH, seconds)
                         .putExtra(AlarmClock.EXTRA_MESSAGE, t("label"))
                         .putExtra(AlarmClock.EXTRA_SKIP_UI, true),
                 )

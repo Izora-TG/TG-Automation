@@ -7,11 +7,16 @@ import androidx.compose.material.icons.filled.Bedtime
 import androidx.compose.material.icons.filled.FlashlightOn
 import androidx.compose.material.icons.filled.Headphones
 import androidx.compose.material.icons.filled.FlipToBack
+import androidx.compose.material.icons.filled.Alarm
+import androidx.compose.material.icons.filled.LocalDrink
 import androidx.compose.material.icons.filled.Lock
+import androidx.compose.material.icons.filled.QuestionAnswer
+import androidx.compose.material.icons.filled.Timer
 import androidx.compose.material.icons.filled.Sensors
 import androidx.compose.material.icons.filled.Traffic
 import androidx.compose.material.icons.filled.RecordVoiceOver
 import androidx.compose.material.icons.filled.WbSunny
+import androidx.compose.material.icons.automirrored.filled.StickyNote2
 import androidx.compose.ui.graphics.vector.ImageVector
 import com.tg.automation.model.Component
 import com.tg.automation.model.Link
@@ -41,6 +46,70 @@ private fun c(type: String, vararg params: Pair<String, String>): Component {
 
 object Templates {
     val all = listOf(
+
+        Template("Feierabend-Frage", "Mo–Fr um 17:00: Frage „Nicht stören einschalten?“ – Ja/Nein verzweigt", Icons.Default.QuestionAnswer) {
+            val t = node("time", 150f, 60f, "time" to "17:00", "days" to "1,2,3,4,5")
+            val q = node("ask_yes_no", 150f, 180f, "text" to "Feierabend! Soll ich „Nicht stören“ einschalten?")
+            val dnd = node("dnd", 40f, 310f, "mode" to "priority")
+            val bye = node("toast", 40f, 430f, "text" to "Schönen Feierabend!")
+            val no = node("toast", 260f, 310f, "text" to "Okay, alles bleibt wie es ist.")
+            Macro(
+                name = "Feierabend-Frage",
+                nodes = listOf(t, q, dnd, bye, no),
+                links = listOf(
+                    Link(t.id, PORT_OUT, q.id),
+                    Link(q.id, PORT_YES, dnd.id),
+                    Link(dnd.id, PORT_OUT, bye.id),
+                    Link(q.id, PORT_NO, no.id),
+                ),
+            )
+        },
+        Template("Trink-Zähler", "Stündlich fragen, ob du getrunken hast, und mitzählen", Icons.Default.LocalDrink) {
+            val t = node("interval", 150f, 60f, "minutes" to "60")
+            val window = node("time_range", 150f, 180f, "from" to "08:00", "to" to "22:00")
+            val q = node("ask_yes_no", 40f, 310f, "text" to "Hast du in der letzten Stunde etwas getrunken?", "timeout" to "600")
+            val add = node("set_var", 40f, 440f, "name" to "glaeser", "op" to "add", "value" to "1")
+            val yay = node("toast", 40f, 560f, "text" to "Super! Schon {glaeser} Gläser.")
+            val remind = node("notify", 260f, 440f, "title" to "Trinken nicht vergessen", "text" to "Gönn dir ein Glas Wasser.")
+            Macro(
+                name = "Trink-Zähler",
+                nodes = listOf(t, window, q, add, yay, remind),
+                links = listOf(
+                    Link(t.id, PORT_OUT, window.id),
+                    Link(window.id, PORT_YES, q.id),
+                    Link(q.id, PORT_YES, add.id),
+                    Link(add.id, PORT_OUT, yay.id),
+                    Link(q.id, PORT_NO, remind.id),
+                ),
+            )
+        },
+        Template("Schnell-Timer", "Fragt nach Minuten und stellt einen Timer", Icons.Default.Timer) {
+            Macro.linear(
+                name = "Schnell-Timer",
+                triggers = listOf(c("manual")),
+                constraints = listOf(c("ask_number", "text" to "Wie viele Minuten?", "var" to "minuten", "default" to "10")),
+                actions = listOf(c("set_timer", "minutes" to "{minuten}", "label" to "Schnell-Timer")),
+            )
+        },
+        Template("Wecker per Frage", "Fragt nach einer Uhrzeit und stellt den Wecker", Icons.Default.Alarm) {
+            Macro.linear(
+                name = "Wecker per Frage",
+                triggers = listOf(c("manual")),
+                constraints = listOf(c("ask_time", "text" to "Wann willst du geweckt werden?", "var" to "uhrzeit")),
+                actions = listOf(
+                    c("set_alarm", "from_var" to "{uhrzeit}", "label" to "Geweckt von TG Automation"),
+                    c("toast", "text" to "Wecker auf {uhrzeit} Uhr gestellt"),
+                ),
+            )
+        },
+        Template("Notiz merken", "Fragt nach einem Text und zeigt ihn als Benachrichtigung an", Icons.AutoMirrored.Filled.StickyNote2) {
+            Macro.linear(
+                name = "Notiz merken",
+                triggers = listOf(c("manual")),
+                constraints = listOf(c("ask_text", "text" to "Was soll ich mir merken?", "var" to "notiz")),
+                actions = listOf(c("notify", "title" to "Notiz", "text" to "{notiz}")),
+            )
+        },
 
         Template("Schütteln = Taschenlampe", "Handy schütteln schaltet die Taschenlampe um", Icons.Default.Sensors) {
             Macro.linear(

@@ -9,6 +9,10 @@ Makros werden aus **Blöcken** auf einem Board gebaut und mit Linien verbunden:
 
 - **Auslöser** (blau/Hauptfarbe) starten den Ablauf.
 - **Bedingungen** haben zwei Ausgänge: **Ja** (grün) und **Nein** (rot) – so entstehen Verzweigungen.
+- **Abfragen** (gelb) stellen dir eine Frage – Ja/Nein, Text, Zahl, Uhrzeit, Datum, Auswahl oder Schieberegler.
+  Die Antwort landet in einer Variable (z. B. `{zahl}`), danach geht es über **OK** oder **Abbruch** weiter.
+  Die Frage erscheint als Dialog (mit aktiver Bedienungshilfe auch aus dem Hintergrund) und immer als
+  Benachrichtigung mit Antwort-Knöpfen.
 - **Aktionen** werden ausgeführt und geben dann an den nächsten Block weiter.
 
 Bedienung: Block antippen → Werkzeugleiste (bearbeiten, duplizieren, Verbindungen lösen, löschen).
@@ -16,11 +20,11 @@ Mit „+ Block anhängen“ wird ein neuer Block direkt unter dem ausgewählten 
 Vom ● unter einem Block auf einen anderen ziehen verbindet sie; ins Leere ziehen hängt einen neuen Block an.
 Mit zwei Fingern zoomen und verschieben, „Anordnen“ räumt das Board automatisch auf.
 
-## Blöcke (62)
+## Blöcke (70)
 
-| Auslöser (20) | Bedingungen (14) | Aktionen (28) |
-|---|---|---|
-| Uhrzeit, Intervall, Akkustand, Ladegerät, Bildschirm an/aus/entsperrt, Schütteln, Umdrehen, Kopfhörer, Bluetooth-Gerät, WLAN, Mobile Daten, Flugmodus, Anruf, Klingelmodus geändert, Nicht stören geändert, Energiesparmodus, Benachrichtigung erhalten, App geöffnet, Handy gestartet, Manuell/Verknüpfung | Zeitraum, Wochentage, Akkubereich, Lädt, Bildschirm, WLAN verbunden, Kopfhörer, Klingelmodus, Nicht stören aktiv, Energiesparmodus aktiv, Flugmodus aktiv, App im Vordergrund, Zufall, Variable prüfen | Benachrichtigung, Einblendung, Vorlesen, Vibrieren, Ton abspielen, Lautstärke, Lauter/Leiser, Klingelmodus, Nicht stören, Benachrichtigungen löschen, Taschenlampe, Helligkeit, Bildschirm-Timeout, Auto-Drehen, Medien steuern, Handy bedienen (Home, Zurück, Sperren, Screenshot …), Tippen, Wischen, App öffnen, Webseite öffnen, Webhook/HTTP, Einstellung öffnen, Wecker stellen, Zwischenablage, Variable setzen, Makro ausführen, Ins Protokoll schreiben, Warten |
+| Auslöser (20) | Bedingungen (14) | Abfragen (7) | Aktionen (29) |
+|---|---|---|---|
+| Uhrzeit, Intervall, Akkustand, Ladegerät, Bildschirm an/aus/entsperrt, Schütteln, Umdrehen, Kopfhörer, Bluetooth-Gerät, WLAN, Mobile Daten, Flugmodus, Anruf, Klingelmodus geändert, Nicht stören geändert, Energiesparmodus, Benachrichtigung erhalten, App geöffnet, Handy gestartet, Manuell/Verknüpfung | Zeitraum, Wochentage, Akkubereich, Lädt, Bildschirm, WLAN verbunden, Kopfhörer, Klingelmodus, Nicht stören aktiv, Energiesparmodus aktiv, Flugmodus aktiv, App im Vordergrund, Zufall, Variable prüfen | Ja/Nein, Text, Zahl, Uhrzeit, Datum, Auswahl, Schieberegler | Benachrichtigung, Einblendung, Vorlesen, Vibrieren, Ton abspielen, Lautstärke, Lauter/Leiser, Klingelmodus, Nicht stören, Benachrichtigungen löschen, Taschenlampe, Helligkeit, Bildschirm-Timeout, Auto-Drehen, Medien steuern, Handy bedienen (Home, Zurück, Sperren, Screenshot …), Tippen, Wischen, App öffnen, Webseite öffnen, Webhook/HTTP, Einstellung öffnen, Wecker stellen, Timer stellen, Zwischenablage, Variable setzen, Makro ausführen, Ins Protokoll schreiben, Warten |
 
 Variablen (z. B. Zähler) bleiben gespeichert und können in Texten als `{name}` benutzt werden.
 

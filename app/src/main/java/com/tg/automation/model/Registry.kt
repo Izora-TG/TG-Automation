@@ -9,6 +9,11 @@ import androidx.compose.material.icons.filled.AccountTree
 import androidx.compose.material.icons.filled.Alarm
 import androidx.compose.material.icons.filled.BatterySaver
 import androidx.compose.material.icons.filled.Casino
+import androidx.compose.material.icons.filled.Checklist
+import androidx.compose.material.icons.automirrored.filled.HelpOutline
+import androidx.compose.material.icons.filled.Keyboard
+import androidx.compose.material.icons.filled.Pin
+import androidx.compose.material.icons.filled.Tune
 import androidx.compose.material.icons.filled.ClearAll
 import androidx.compose.material.icons.filled.DataObject
 import androidx.compose.material.icons.filled.EditNote
@@ -115,6 +120,8 @@ class ComponentDef(
     val requirements: (Component) -> Set<Requirement> = { emptySet() },
     /** Auslöser, die den Hintergrund-Dienst brauchen (Systemereignisse). */
     val needsService: Boolean = false,
+    /** Beschriftung der beiden Ausgänge bei verzweigenden Blöcken. */
+    val portLabels: Pair<String, String> = "Ja" to "Nein",
     val summary: (Component) -> String = { "" },
 ) {
     fun create(): Component = Component(type, params.associate { it.key to it.default })
@@ -143,6 +150,8 @@ fun formatDays(days: String): String {
         else -> set.joinToString(", ") { DAY_NAMES[it - 1] }
     }
 }
+
+private fun askTimeout() = Param.Number("timeout", "Ohne Antwort abbrechen nach (0 = nie)", 120, 0, 86400, "s")
 
 private fun appName(pkg: String): String =
     if (pkg.isBlank()) "beliebige App" else Apps.label(App.instance, pkg)
@@ -553,6 +562,97 @@ object Registry {
             summary = { "Mobile Daten ${if (it.p("state") == "connected") "verbunden" else "getrennt"}" },
         ),
 
+        // ───────────── ABFRAGEN ─────────────
+        ComponentDef(
+            "ask_yes_no", Kind.QUESTION, "Abfragen", "Frage: Ja oder Nein",
+            "Fragt dich etwas – „Ja“ und „Nein“ führen zu verschiedenen Blöcken", Icons.AutoMirrored.Filled.HelpOutline,
+            params = listOf(
+                Param.Text("text", "Frage", "Soll ich das machen?", multiline = true),
+                Param.Text("yes", "Text für Ja", "Ja"),
+                Param.Text("no", "Text für Nein", "Nein"),
+                askTimeout(),
+            ),
+            requirements = { setOf(Requirement.NOTIFICATIONS) },
+            summary = { "„${it.p("text")}“" },
+        ),
+        ComponentDef(
+            "ask_text", Kind.QUESTION, "Abfragen", "Frage: Text eingeben",
+            "Fragt nach einem Text und speichert ihn in einer Variable", Icons.Default.Keyboard,
+            params = listOf(
+                Param.Text("text", "Frage", "Was soll ich mir merken?", multiline = true),
+                Param.Text("var", "Antwort speichern in Variable", "antwort"),
+                Param.Text("default", "Vorgabe (optional)", ""),
+                askTimeout(),
+            ),
+            requirements = { setOf(Requirement.NOTIFICATIONS) },
+            portLabels = "OK" to "Abbruch",
+            summary = { "„${it.p("text")}“ → {${it.p("var")}}" },
+        ),
+        ComponentDef(
+            "ask_number", Kind.QUESTION, "Abfragen", "Frage: Zahl eingeben",
+            "Fragt nach einer Zahl und speichert sie in einer Variable", Icons.Default.Pin,
+            params = listOf(
+                Param.Text("text", "Frage", "Wie viele Minuten?", multiline = true),
+                Param.Text("var", "Antwort speichern in Variable", "zahl"),
+                Param.Text("default", "Vorgabe (optional)", ""),
+                askTimeout(),
+            ),
+            requirements = { setOf(Requirement.NOTIFICATIONS) },
+            portLabels = "OK" to "Abbruch",
+            summary = { "„${it.p("text")}“ → {${it.p("var")}}" },
+        ),
+        ComponentDef(
+            "ask_time", Kind.QUESTION, "Abfragen", "Frage: Uhrzeit wählen",
+            "Lässt dich eine Uhrzeit wählen (gespeichert als HH:MM)", Icons.Default.Schedule,
+            params = listOf(
+                Param.Text("text", "Frage", "Wann soll der Wecker klingeln?", multiline = true),
+                Param.Text("var", "Antwort speichern in Variable", "uhrzeit"),
+                askTimeout(),
+            ),
+            requirements = { setOf(Requirement.NOTIFICATIONS) },
+            portLabels = "OK" to "Abbruch",
+            summary = { "„${it.p("text")}“ → {${it.p("var")}}" },
+        ),
+        ComponentDef(
+            "ask_date", Kind.QUESTION, "Abfragen", "Frage: Datum wählen",
+            "Lässt dich ein Datum wählen (gespeichert als TT.MM.JJJJ)", Icons.Default.DateRange,
+            params = listOf(
+                Param.Text("text", "Frage", "Welcher Tag?", multiline = true),
+                Param.Text("var", "Antwort speichern in Variable", "datum"),
+                askTimeout(),
+            ),
+            requirements = { setOf(Requirement.NOTIFICATIONS) },
+            portLabels = "OK" to "Abbruch",
+            summary = { "„${it.p("text")}“ → {${it.p("var")}}" },
+        ),
+        ComponentDef(
+            "ask_choice", Kind.QUESTION, "Abfragen", "Frage: Auswahl",
+            "Lässt dich aus mehreren Möglichkeiten wählen", Icons.Default.Checklist,
+            params = listOf(
+                Param.Text("text", "Frage", "Was gibt es zu essen?", multiline = true),
+                Param.Text("options", "Möglichkeiten (mit Komma getrennt)", "Pizza, Pasta, Salat"),
+                Param.Text("var", "Antwort speichern in Variable", "auswahl"),
+                askTimeout(),
+            ),
+            requirements = { setOf(Requirement.NOTIFICATIONS) },
+            portLabels = "OK" to "Abbruch",
+            summary = { "${it.p("options")} → {${it.p("var")}}" },
+        ),
+        ComponentDef(
+            "ask_slider", Kind.QUESTION, "Abfragen", "Frage: Schieberegler",
+            "Lässt dich einen Wert mit einem Regler einstellen, z. B. Lautstärke", Icons.Default.Tune,
+            params = listOf(
+                Param.Text("text", "Frage", "Wie laut?", multiline = true),
+                Param.Number("min", "Kleinster Wert", 0, -100000, 100000),
+                Param.Number("max", "Größter Wert", 100, -100000, 100000),
+                Param.Text("var", "Antwort speichern in Variable", "wert"),
+                askTimeout(),
+            ),
+            requirements = { setOf(Requirement.NOTIFICATIONS) },
+            portLabels = "OK" to "Abbruch",
+            summary = { "${it.p("min")}–${it.p("max")} → {${it.p("var")}}" },
+        ),
+
         // ───────────── WEITERE BEDINGUNGEN ─────────────
         ComponentDef(
             "chance", Kind.CONSTRAINT, "Logik", "Zufall",
@@ -641,9 +741,23 @@ object Registry {
         ComponentDef(
             "set_alarm", Kind.ACTION, "Apps & Web", "Wecker stellen",
             "Stellt einen Wecker in der Uhr-App", Icons.Default.Alarm,
-            params = listOf(Param.Time("time", "Uhrzeit", "07:00"), Param.Text("label", "Bezeichnung", "TG Automation")),
+            params = listOf(
+                Param.Time("time", "Uhrzeit", "07:00"),
+                Param.Text("from_var", "Oder Uhrzeit aus Variable (optional)", "", hint = "z. B. {uhrzeit}"),
+                Param.Text("label", "Bezeichnung", "TG Automation"),
+            ),
             requirements = { setOf(Requirement.ACCESSIBILITY) },
-            summary = { "Wecker ${it.p("time")} Uhr" },
+            summary = { if (it.p("from_var").isNotBlank()) "Wecker ${it.p("from_var")}" else "Wecker ${it.p("time")} Uhr" },
+        ),
+        ComponentDef(
+            "set_timer", Kind.ACTION, "Apps & Web", "Timer stellen",
+            "Startet einen Timer in der Uhr-App – Dauer auch aus Variable, z. B. {zahl}", Icons.Default.Timer,
+            params = listOf(
+                Param.Text("minutes", "Minuten", "5", hint = "Zahl oder {variable}"),
+                Param.Text("label", "Bezeichnung", "TG Automation"),
+            ),
+            requirements = { setOf(Requirement.ACCESSIBILITY) },
+            summary = { "Timer ${it.p("minutes")} min" },
         ),
         ComponentDef(
             "set_var", Kind.ACTION, "Logik", "Variable setzen",

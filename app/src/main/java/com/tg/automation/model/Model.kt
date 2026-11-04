@@ -102,7 +102,7 @@ data class Macro(
                 val n = Node(type = c.type, params = c.params, x = centerX, y = y)
                 nodes += n
                 previous.forEach { (p, port) -> links += Link(p.id, port, n.id) }
-                previous = listOf(n to if (n.kind == Kind.CONSTRAINT) PORT_YES else PORT_OUT)
+                previous = listOf(n to if (n.kind?.branches == true) PORT_YES else PORT_OUT)
                 y += rowY
             }
             return Macro(name = name, nodes = nodes, links = links)
@@ -118,10 +118,11 @@ data class LogEntry(
     val error: Boolean = false,
 )
 
-enum class Kind(val title: String, val plural: String) {
-    TRIGGER("Auslöser", "Auslöser"),
-    CONSTRAINT("Bedingung", "Bedingungen"),
-    ACTION("Aktion", "Aktionen"),
+enum class Kind(val title: String, val plural: String, val branches: Boolean) {
+    TRIGGER("Auslöser", "Auslöser", false),
+    CONSTRAINT("Bedingung", "Bedingungen", true),
+    QUESTION("Abfrage", "Abfragen", true),
+    ACTION("Aktion", "Aktionen", false),
 }
 
 enum class Requirement(val title: String, val description: String) {

@@ -112,6 +112,19 @@
                 android:value="true" />
         </service>
 
+        <activity
+            android:name=".ui.QuestionActivity"
+            android:configChanges="orientation|screenSize|screenLayout|smallestScreenSize|keyboardHidden|keyboard|uiMode"
+            android:excludeFromRecents="true"
+            android:exported="false"
+            android:taskAffinity="com.tg.automation.questions"
+            android:theme="@style/Theme.TGAutomation.Dialog"
+            android:windowSoftInputMode="adjustResize" />
+
+        <receiver
+            android:name=".service.QuestionReceiver"
+            android:exported="false" />
+
         <receiver
             android:name=".service.AlarmReceiver"
             android:exported="false" />
