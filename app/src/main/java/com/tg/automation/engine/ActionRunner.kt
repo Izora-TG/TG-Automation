@@ -2,6 +2,7 @@ package com.tg.automation.engine
 
 import android.Manifest
 import android.accessibilityservice.AccessibilityService
+import android.accessibilityservice.GestureDescription
 import android.app.NotificationManager
 import android.app.PendingIntent
 import android.content.ClipData
@@ -100,8 +101,13 @@ object ActionRunner {
                     .setPrimaryClip(ClipData.newPlainText("TG Automation", t("text")))
             }
             "wait" -> delay(a.int("seconds", 1).coerceIn(1, 3600) * 1000L)
-            "tap" -> gesture(ctx, a.int("x", 50), a.int("y", 50), a.p("press") == "long")
-            "swipe" -> swipe(ctx, a.p("dir"))
+            "tap" -> {
+                // Neues Format: "pos" = Anteile; älteres Format: x/y in Prozent.
+                val pos = ScreenPicker.parse(a.params["pos"])
+                    ?: listOf(a.int("x", 50) / 100f, a.int("y", 50) / 100f)
+                tap(ctx, pos[0], pos[1], a.p("press"))
+            }
+            "swipe" -> swipe(ctx, a.p("dir"), a.p("path"), a.p("speed"))
             "volume_step" -> volumeStep(ctx, a.p("stream"), a.p("dir"))
             "play_sound" -> playSound(ctx, a.p("sound"))
             "clear_notifications" -> {
@@ -394,22 +400,39 @@ object ActionRunner {
         VarStore.set(name, result)
     }
 
-    private suspend fun gesture(ctx: Context, xPct: Int, yPct: Int, long: Boolean) {
+    private suspend fun tap(ctx: Context, fx: Float, fy: Float, press: String) {
         val svc = ControlService.instance
             ?: throw ActionException("Bedienungshilfe „TG Automation – Steuerung“ ist nicht aktiv")
-        val dm = ctx.resources.displayMetrics
-        val x = dm.widthPixels * xPct.coerceIn(0, 100) / 100f
-        val y = dm.heightPixels * yPct.coerceIn(0, 100) / 100f
-        val path = Path().apply { moveTo(x.coerceAtLeast(1f), y.coerceAtLeast(1f)) }
-        if (!svc.dispatch(path, if (long) 800L else 60L)) throw ActionException("Das System hat die Geste abgelehnt")
+        val size = ScreenPicker.realSize(ctx)
+        val x = (size.x * fx).coerceIn(1f, size.x - 1f)
+        val y = (size.y * fy).coerceIn(1f, size.y - 1f)
+        fun stroke(start: Long, duration: Long) =
+            GestureDescription.StrokeDescription(Path().apply { moveTo(x, y) }, start, duration)
+        val strokes = when (press) {
+            "long" -> listOf(stroke(0, 800))
+            "double" -> listOf(stroke(0, 50), stroke(150, 50))
+            else -> listOf(stroke(0, 60))
+        }
+        if (!svc.dispatch(strokes)) throw ActionException("Das System hat die Geste abgelehnt")
     }
 
-    private suspend fun swipe(ctx: Context, dir: String) {
+    private suspend fun swipe(ctx: Context, dir: String, custom: String, speed: String) {
         val svc = ControlService.instance
             ?: throw ActionException("Bedienungshilfe „TG Automation – Steuerung“ ist nicht aktiv")
-        val dm = ctx.resources.displayMetrics
-        val w = dm.widthPixels.toFloat()
-        val h = dm.heightPixels.toFloat()
+        val size = ScreenPicker.realSize(ctx)
+        val w = size.x.toFloat()
+        val h = size.y.toFloat()
+        val duration = when (speed) { "fast" -> 120L; "slow" -> 800L; else -> 300L }
+        if (dir == "custom") {
+            val p = ScreenPicker.parse(custom)
+            if (p == null || p.size < 4) throw ActionException("Keine eigene Wisch-Strecke gewählt")
+            val path = Path().apply {
+                moveTo(p[0] * w, p[1] * h)
+                lineTo(p[2] * w, p[3] * h)
+            }
+            if (!svc.dispatch(path, duration)) throw ActionException("Das System hat die Geste abgelehnt")
+            return
+        }
         val (from, to) = when (dir) {
             "down" -> (w / 2 to h * 0.3f) to (w / 2 to h * 0.7f)
             "left" -> (w * 0.8f to h / 2) to (w * 0.2f to h / 2)
@@ -420,7 +443,7 @@ object ActionRunner {
             moveTo(from.first, from.second)
             lineTo(to.first, to.second)
         }
-        if (!svc.dispatch(path, 300L)) throw ActionException("Das System hat die Geste abgelehnt")
+        if (!svc.dispatch(path, duration)) throw ActionException("Das System hat die Geste abgelehnt")
     }
 
     private fun volumeStep(ctx: Context, streamName: String, dir: String) {

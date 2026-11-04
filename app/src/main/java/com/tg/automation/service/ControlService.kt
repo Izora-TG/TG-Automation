@@ -18,6 +18,16 @@ import kotlin.coroutines.resume
  */
 class ControlService : AccessibilityService() {
     private val launchable = HashMap<String, Boolean>()
+    private var picker: PickerOverlay? = null
+
+    /** Zeigt das Overlay zum Auswählen einer Position/Strecke. */
+    fun startPicker(mode: String, initial: String, onDone: (String?) -> Unit) {
+        picker?.finish(null)
+        picker = PickerOverlay(this, mode, initial) { result ->
+            picker = null
+            onDone(result)
+        }.also { it.showBubble() }
+    }
 
     override fun onServiceConnected() {
         super.onServiceConnected()
@@ -39,10 +49,11 @@ class ControlService : AccessibilityService() {
     }
 
     /** Führt eine Geste aus und wartet, bis sie fertig ist. */
-    suspend fun dispatch(path: Path, durationMs: Long): Boolean = withContext(Dispatchers.Main) {
-        val gesture = GestureDescription.Builder()
-            .addStroke(GestureDescription.StrokeDescription(path, 0, durationMs))
-            .build()
+    suspend fun dispatch(path: Path, durationMs: Long): Boolean =
+        dispatch(listOf(GestureDescription.StrokeDescription(path, 0, durationMs)))
+
+    suspend fun dispatch(strokes: List<GestureDescription.StrokeDescription>): Boolean = withContext(Dispatchers.Main) {
+        val gesture = GestureDescription.Builder().apply { strokes.forEach { addStroke(it) } }.build()
         suspendCancellableCoroutine { cont ->
             val started = dispatchGesture(
                 gesture,
@@ -64,6 +75,7 @@ class ControlService : AccessibilityService() {
     override fun onInterrupt() {}
 
     override fun onUnbind(intent: Intent?): Boolean {
+        picker?.finish(null)
         instance = null
         return super.onUnbind(intent)
     }

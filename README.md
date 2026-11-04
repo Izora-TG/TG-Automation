@@ -26,6 +26,10 @@ Mit zwei Fingern zoomen und verschieben, „Anordnen“ räumt das Board automat
 |---|---|---|---|
 | Uhrzeit, Intervall, Akkustand, Ladegerät, Bildschirm an/aus/entsperrt, Schütteln, Umdrehen, Kopfhörer, Bluetooth-Gerät, WLAN, Mobile Daten, Flugmodus, Anruf, Klingelmodus geändert, Nicht stören geändert, Energiesparmodus, Benachrichtigung erhalten, App geöffnet, Handy gestartet, Manuell/Verknüpfung | Zeitraum, Wochentage, Akkubereich, Lädt, Bildschirm, WLAN verbunden, Kopfhörer, Klingelmodus, Nicht stören aktiv, Energiesparmodus aktiv, Flugmodus aktiv, App im Vordergrund, Zufall, Variable prüfen | Ja/Nein, Text, Zahl, Uhrzeit, Datum, Auswahl, Schieberegler | Benachrichtigung, Einblendung, Vorlesen, Vibrieren, Ton abspielen, Lautstärke, Lauter/Leiser, Klingelmodus, Nicht stören, Benachrichtigungen löschen, Taschenlampe, Helligkeit, Bildschirm-Timeout, Auto-Drehen, Medien steuern, Handy bedienen (Home, Zurück, Sperren, Screenshot …), Tippen, Wischen, App öffnen, Webseite öffnen, Webhook/HTTP, Einstellung öffnen, Wecker stellen, Timer stellen, Zwischenablage, Variable setzen, Makro ausführen, Ins Protokoll schreiben, Warten |
 
+**Tippen & Wischen:** Die Position wählst du direkt auf dem Bildschirm. Im Block auf „Auf dem Bildschirm wählen“
+tippen, die Ziel-App öffnen, dann auf die rote Blase „📍 Position wählen“ – über der App erscheint ein Raster,
+dort tippst (bzw. wischst) du an die gewünschte Stelle. Mit „Testen“ wird die Geste einmal wirklich ausgeführt.
+
 Variablen (z. B. Zähler) bleiben gespeichert und können in Texten als `{name}` benutzt werden.
 
 Texte können Platzhalter enthalten: `{eigene_variable}`, `{battery}`, `{time}`, `{date}`, `{app_name}`, `{title}`, `{text}`, `{ssid}`, `{device}`, `{http_response}`.

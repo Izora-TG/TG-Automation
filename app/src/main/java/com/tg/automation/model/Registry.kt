@@ -62,6 +62,7 @@ import androidx.compose.ui.graphics.vector.ImageVector
 import com.tg.automation.App
 import com.tg.automation.data.MacroRepository
 import com.tg.automation.engine.Apps
+import com.tg.automation.engine.ScreenPicker
 
 /** Beschreibt ein einstellbares Feld eines Bausteins. */
 sealed class Param(val key: String, val label: String, val default: String) {
@@ -107,6 +108,14 @@ sealed class Param(val key: String, val label: String, val default: String) {
         Param(key, label, "")
 
     class MacroRef(key: String = "macro", label: String = "Makro") : Param(key, label, "")
+
+    /** Position auf dem Bildschirm ("x;y" als Anteile 0–1), per Overlay wählbar. */
+    class ScreenPoint(key: String = "pos", label: String = "Position", default: String = "0.5000;0.5000") :
+        Param(key, label, default)
+
+    /** Wisch-Strecke ("x1;y1;x2;y2"), per Overlay wählbar. */
+    class ScreenSwipe(key: String = "path", label: String = "Eigene Strecke", default: String = "") :
+        Param(key, label, default)
 }
 
 class ComponentDef(
@@ -699,23 +708,34 @@ object Registry {
         // ───────────── WEITERE AKTIONEN ─────────────
         ComponentDef(
             "tap", Kind.ACTION, "Steuerung", "Auf Bildschirm tippen",
-            "Tippt an eine Stelle (in % der Bildschirmbreite/-höhe)", Icons.Default.TouchApp,
+            "Tippt an eine Stelle – die Position wählst du direkt auf dem Bildschirm", Icons.Default.TouchApp,
             params = listOf(
-                Param.Slider("x", "Waagerecht", 50, 0, 100, "%"),
-                Param.Slider("y", "Senkrecht", 50, 0, 100, "%"),
-                Param.Choice("press", "Art", listOf("short" to "Kurz", "long" to "Lang")),
+                Param.ScreenPoint(),
+                Param.Choice("press", "Art", listOf("short" to "Kurz", "double" to "Doppelt", "long" to "Lang")),
             ),
             requirements = { setOf(Requirement.ACCESSIBILITY) },
-            summary = { "${if (it.p("press") == "long") "Lang tippen" else "Tippen"} bei ${it.p("x")} % / ${it.p("y")} %" },
+            summary = {
+                val pos = it.params["pos"]
+                val where = if (pos != null) ScreenPicker.describe(pos) else "${it.p("x")} % · ${it.p("y")} %"
+                "${Registry.def("tap")!!.choiceLabel(it, "press")} tippen bei $where"
+            },
         ),
         ComponentDef(
             "swipe", Kind.ACTION, "Steuerung", "Wischen",
-            "Wischt über den Bildschirm, z. B. zum Scrollen", Icons.Default.Swipe,
+            "Wischt über den Bildschirm – feste Richtung oder eigene Strecke", Icons.Default.Swipe,
             params = listOf(
-                Param.Choice("dir", "Richtung", listOf("up" to "Nach oben", "down" to "Nach unten", "left" to "Nach links", "right" to "Nach rechts")),
+                Param.Choice(
+                    "dir", "Richtung",
+                    listOf("up" to "Nach oben", "down" to "Nach unten", "left" to "Nach links", "right" to "Nach rechts", "custom" to "Eigene Strecke"),
+                ),
+                Param.ScreenSwipe(),
+                Param.Choice("speed", "Tempo", listOf("fast" to "Schnell", "normal" to "Normal", "slow" to "Langsam"), default = "normal"),
             ),
             requirements = { setOf(Requirement.ACCESSIBILITY) },
-            summary = { Registry.def("swipe")!!.choiceLabel(it, "dir") + " wischen" },
+            summary = {
+                if (it.p("dir") == "custom") "Wischen ${ScreenPicker.describe(it.p("path"))}"
+                else Registry.def("swipe")!!.choiceLabel(it, "dir") + " wischen"
+            },
         ),
         ComponentDef(
             "volume_step", Kind.ACTION, "Benachrichtigung & Ton", "Lauter / Leiser",
